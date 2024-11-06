@@ -1,3 +1,4 @@
+import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -8,8 +9,13 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from basic_DCGAN_ARCHITECTURE import Discriminator, Generator, initialise_weights
 
+# Create directory for models
+model_dir = "saved_models"
+os.makedirs(model_dir, exist_ok=True)
+
 # Hyperparameters ect.
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(device)
 LEARNING_RATE = 2e-4
 BATCH_SIZE = 128
 IMAGE_SIZE = 64
@@ -31,7 +37,7 @@ transforms = transforms.Compose(
 )
 
 #dataset = datasets.MNIST(root="dataset/", train=True, transform=transforms, download=True)
-dataset = datasets.ImageFolder(root='celeb_dataset', transform=transforms)
+dataset = datasets.ImageFolder(root='archive\img_align_celeba', transform=transforms)
 loader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True)
 gen = Generator(Z_DIM, CHANNELS_IMG, FEATURES_GEN).to(device)
 disc = Discriminator(CHANNELS_IMG, FEATURES_DISC).to(device)
@@ -52,7 +58,8 @@ disc.train()
 
 for epoch in range(NUM_EPOCHS):
 	for batch_idx, (real, _) in enumerate(loader):
-		print(batch_idx)
+		if batch_idx % 100 == 0:
+			print(batch_idx)
 		real = real.to(device)
 		noise = torch.randn((BATCH_SIZE, Z_DIM, 1, 1)).to(device)
 		fake = gen(noise)
@@ -91,5 +98,10 @@ for epoch in range(NUM_EPOCHS):
 				writer_fake.add_image("Fake", img_grid_fake, global_step=step)
 
 			step += 1
+		
+	# Save the model after each epoch
+	torch.save(gen.state_dict(), os.path.join(model_dir, f"generator_epoch_{epoch}.pth"))
+	torch.save(disc.state_dict(), os.path.join(model_dir, f"discriminator_epoch_{epoch}.pth"))
+	print(f"Saved models for epoch {epoch}")
 
 
